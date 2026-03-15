@@ -6,9 +6,25 @@ import pytest
 
 client = TestClient(app)
 
+import pytest
+from models import Post, PostStatus
+from database import SessionLocal
+
 # Fixtures for mock authentication and DB
 def auth_headers():
     return {"Authorization": "Bearer testtoken"}
+
+@pytest.fixture(autouse=True)
+def setup_test_post():
+    db = SessionLocal()
+    # Remove all posts
+    db.query(Post).delete()
+    db.commit()
+    # Add a post with id=1
+    post = Post(id=1, title="Test Post", content="Test Content", author="testuser", status=PostStatus.published)
+    db.add(post)
+    db.commit()
+    db.close()
 
 # --- GET /api/posts (pagination, public) ---
 def test_get_posts_returns_paginated_list():
