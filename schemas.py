@@ -11,14 +11,14 @@ class PostStatus(str, Enum):
 class PostCreate(BaseModel):
     title: str = Field(..., max_length=255)
     content: str
-    author: str = Field(..., max_length=100)
+    author: Optional[str] = Field(None, max_length=100)
     status: Optional[PostStatus] = PostStatus.draft
 
 class PostUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
-    content: Optional[str]
+    content: Optional[str] = None
     author: Optional[str] = Field(None, max_length=100)
-    status: Optional[PostStatus]
+    status: Optional[PostStatus] = None
 
 class PostResponse(BaseModel):
     id: int
@@ -30,4 +30,5 @@ class PostResponse(BaseModel):
     updated_at: datetime
 
     class Config:
+        from_attributes = True
         orm_mode = True
