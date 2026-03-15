@@ -1,4 +1,1 @@
-## #18 — Task: Set up FastAPI project structure
-_2026-03-15_
-
-Initial FastAPI backend scaffolding with SQLAlchemy, Alembic, SQLite, and CORS for Angular dev server.
+# Changelog\n\n<!--entries below-->\n\n## #20 — Task: Create Post data model and migration\n_2026-03-15_\n\nDefines the Post SQLAlchemy model, Alembic migration, Pydantic schemas, and unit tests for the blog's core Post data structure.\n\n## #18 — Task: Set up FastAPI project structure\n_2026-03-15_\n\nInitial FastAPI backend scaffolding with SQLAlchemy, Alembic, SQLite, and CORS for Angular dev server.\n
