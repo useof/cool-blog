@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from models import Post  # Ensure Post is imported for metadata
 
 app = FastAPI()
 
