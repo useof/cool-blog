@@ -29,17 +29,63 @@ def get_db():
     finally:
         db.close()
 
-# --- Simple token-based auth for demo ---
-ADMIN_TOKEN = "admin-token"
-USER_TOKEN = "user-token"
+# --- JWT-based Auth Implementation ---
+import os
+from jose import jwt, JWTError
+
+@app.post("/api/auth/login")
+def login(data: dict):
+    username = data.get("username")
+    password = data.get("password")
+    admin_username = os.environ.get("ADMIN_USERNAME")
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+    jwt_secret = os.environ.get("JWT_SECRET")
+    if not (admin_username and admin_password and jwt_secret):
+        raise HTTPException(status_code=401, detail="Auth not configured")
+    if username != admin_username or password != admin_password:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    payload = {
+        "sub": username,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=60)).timestamp()),
+    }
+    token = jwt.encode(payload, jwt_secret, algorithm="HS256")
+    return {"token": token}
+
+@app.get("/api/auth/me")
+def me(request: Request):
+    auth = request.headers.get("Authorization")
+    if not auth or not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth.split(" ", 1)[1]
+    jwt_secret = os.environ.get("JWT_SECRET")
+    if not jwt_secret:
+        raise HTTPException(status_code=401, detail="Auth not configured")
+    try:
+        payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+        # Optionally check exp, sub, etc.
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return {"authenticated": True}
 
 def get_current_admin(request: Request):
     auth = request.headers.get("Authorization")
     if not auth or not auth.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
     token = auth.split(" ", 1)[1]
-    if token != ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="Not authorized")
+    jwt_secret = os.environ.get("JWT_SECRET")
+    if not jwt_secret:
+        raise HTTPException(status_code=401, detail="Auth not configured")
+    try:
+        payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+        # Optionally check sub == admin
+        admin_username = os.environ.get("ADMIN_USERNAME")
+        if payload.get("sub") != admin_username:
+            raise HTTPException(status_code=401, detail="Not authorized")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     return True
 
 @app.get("/")
