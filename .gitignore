@@ -110,3 +110,5 @@ cython_debug/
 
 # Alembic
 alembic/versions/
+
+.devteam/
