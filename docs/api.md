@@ -15,21 +15,21 @@
 
 ### POST /api/posts
 - Create a new post (admin only).
-- Requires `Authorization: Bearer admin-token` header.
+- Requires `Authorization: Bearer <JWT token>` header.
 - Body: PostCreate
 - Response: PostResponse, 201 Created
 - 401 if not authenticated as admin.
 
 ### PUT /api/posts/{id}
 - Update a post (admin only).
-- Requires `Authorization: Bearer admin-token` header.
+- Requires `Authorization: Bearer <JWT token>` header.
 - Body: PostUpdate
 - Response: PostResponse
 - 404 if not found, 401 if not admin.
 
 ### DELETE /api/posts/{id}
 - Delete a post (admin only).
-- Requires `Authorization: Bearer admin-token` header.
+- Requires `Authorization: Bearer <JWT token>` header.
 - Response: 204 No Content
 - 404 if not found, 401 if not admin.
 
@@ -45,4 +45,15 @@
 #### PostResponse
 - id, title, content, author, status, created_at, updated_at
 
-Authentication: Use `Authorization: Bearer admin-token` for admin routes.
+## Authentication API
+
+### POST /api/auth/login
+- Accepts: `{ "username": str, "password": str }` (JSON body)
+- Validates credentials against `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables.
+- On success: returns `{ "token": <JWT token> }` (signed with `JWT_SECRET`, expires in 1 hour).
+- On failure: returns 401 Unauthorized.
+
+### GET /api/auth/me
+- Requires: `Authorization: Bearer <JWT token>` header.
+- On valid token: returns `{ "authenticated": true }`.
+- On invalid/missing/expired token: returns 401 Unauthorized.
