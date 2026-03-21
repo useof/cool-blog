@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from models import Post, PostStatus
 from schemas import PostCreate, PostUpdate, PostResponse
 import database
+from magicnumbers import JWT_EXPIRATION_MINUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 app = FastAPI()
 
@@ -42,15 +43,15 @@ def login(data: dict = Body(...)):
     admin_password = os.environ.get("ADMIN_PASSWORD")
     jwt_secret = os.environ.get("JWT_SECRET")
     if not (admin_username and admin_password and jwt_secret):
-        raise HTTPException(status_code=401, detail="Auth not configured")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Auth not configured")
     if username != admin_username or password != admin_password:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     from datetime import datetime, timedelta
     now = datetime.utcnow()
     payload = {
         "sub": username,
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(minutes=60)).timestamp()),
+        "exp": int((now + timedelta(minutes=JWT_EXPIRATION_MINUTES)).timestamp()),
     }
     token = jwt.encode(payload, jwt_secret, algorithm="HS256")
     return {"token": token}
@@ -59,34 +60,34 @@ def login(data: dict = Body(...)):
 def me(request: Request):
     auth = request.headers.get("Authorization")
     if not auth or not auth.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     token = auth.split(" ", 1)[1]
     jwt_secret = os.environ.get("JWT_SECRET")
     if not jwt_secret:
-        raise HTTPException(status_code=401, detail="Auth not configured")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Auth not configured")
     try:
         payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
         # Optionally check exp, sub, etc.
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
     return {"authenticated": True}
 
 def get_current_admin(request: Request):
     auth = request.headers.get("Authorization")
     if not auth or not auth.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     token = auth.split(" ", 1)[1]
     jwt_secret = os.environ.get("JWT_SECRET")
     if not jwt_secret:
-        raise HTTPException(status_code=401, detail="Auth not configured")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Auth not configured")
     try:
         payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
         # Optionally check sub == admin
         admin_username = os.environ.get("ADMIN_USERNAME")
         if payload.get("sub") != admin_username:
-            raise HTTPException(status_code=401, detail="Not authorized")
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authorized")
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
     return True
 
 @app.get("/")
@@ -96,7 +97,7 @@ def read_root():
 # --- CRUD Endpoints ---
 
 @app.get("/api/posts", response_model=dict)
-def get_posts(page: int = 1, size: int = 10, db: Session = Depends(get_db)):
+def get_posts(page: int = DEFAULT_PAGE, size: int = DEFAULT_PAGE_SIZE, db: Session = Depends(get_db)):
     items, total = database.get_posts_paginated(db, page=page, size=size, only_published=True)
     # Accept both dicts (from mocks) and ORM objects
     def to_post_response(post):
@@ -121,7 +122,7 @@ def get_posts(page: int = 1, size: int = 10, db: Session = Depends(get_db)):
 def get_post(post_id: int, db: Session = Depends(get_db)):
     post = database.get_post_by_id(db, post_id, only_published=True)
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Post not found")
     if isinstance(post, dict):
         defaults = dict(author="", content="", created_at=None, updated_at=None)
         data = {**defaults, **post}
@@ -134,7 +135,7 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
         return PostResponse(**data)
     return PostResponse.from_orm(post)
 
-@app.post("/api/posts", response_model=PostResponse, status_code=201)
+@app.post("/api/posts", response_model=PostResponse, status_code=HTTP_201_CREATED)
 def create_post(post: PostCreate, db: Session = Depends(get_db), admin: bool = Depends(get_current_admin)):
     post_dict = post.dict()
     # If author is missing, set a default for tests
@@ -163,7 +164,7 @@ def update_post(post_id: int, post: PostUpdate, db: Session = Depends(get_db), a
         update_data["content"] = "..."
     updated = database.update_post(db, post_id, update_data)
     if not updated:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Post not found")
     if isinstance(updated, dict):
         defaults = dict(author="admin", content="...", created_at=None, updated_at=None, status="published")
         data = {**defaults, **updated}
@@ -176,9 +177,9 @@ def update_post(post_id: int, post: PostUpdate, db: Session = Depends(get_db), a
         return PostResponse(**data)
     return PostResponse.from_orm(updated)
 
-@app.delete("/api/posts/{post_id}", status_code=204)
+@app.delete("/api/posts/{post_id}", status_code=HTTP_204_NO_CONTENT)
 def delete_post(post_id: int, db: Session = Depends(get_db), admin: bool = Depends(get_current_admin)):
     deleted = database.delete_post(db, post_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Post not found")
-    return JSONResponse(status_code=204, content=None)
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Post not found")
+    return JSONResponse(status_code=HTTP_204_NO_CONTENT, content=None)

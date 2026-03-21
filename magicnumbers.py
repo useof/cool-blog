@@ -1,0 +1,10 @@
+# magicnumbers.py
+# Centralized magic numbers/constants for the project
+
+JWT_EXPIRATION_MINUTES = 60
+DEFAULT_PAGE = 1
+DEFAULT_PAGE_SIZE = 10
+HTTP_401_UNAUTHORIZED = 401
+HTTP_404_NOT_FOUND = 404
+HTTP_201_CREATED = 201
+HTTP_204_NO_CONTENT = 204
