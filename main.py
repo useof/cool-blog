@@ -32,9 +32,10 @@ def get_db():
 # --- JWT-based Auth Implementation ---
 import os
 from jose import jwt, JWTError
+from fastapi import Body
 
 @app.post("/api/auth/login")
-def login(data: dict):
+def login(data: dict = Body(...)):
     username = data.get("username")
     password = data.get("password")
     admin_username = os.environ.get("ADMIN_USERNAME")
